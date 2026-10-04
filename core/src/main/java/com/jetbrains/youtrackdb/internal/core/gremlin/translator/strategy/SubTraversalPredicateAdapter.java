@@ -73,11 +73,9 @@ import org.apache.tinkerpop.gremlin.structure.Element;
  * each connective decide: AND and the positive filters forward it (they are conjunctive, so the
  * plan-level sink is the right destination), OR and an enclosing NOT decline.
  *
- * <p>Three contributions still write straight through to the parent, deliberately: {@link
- * #bindParam}, {@link #markRidBearing}, and the two alias minters. All three are walk-global rather
- * than per-connective — a parameter slot, a plan-cache flag, and one alias sequence shared by the
- * whole walk — and a captured child that ends up discarded leaves behind at most an unused slot, an
- * over-conservative cache bypass, or a gap in the alias sequence, none of which changes an answer.
+ * <p>Bindings, their slot layouts, cache eligibility, and alias minting write straight through to
+ * the parent. They describe the whole walk rather than a connective's filter. A failed child
+ * discards the entire walk, so its provisional layout never becomes a cached template.
  *
  * <h2>Classification the combinator reads back</h2>
  *
@@ -257,7 +255,7 @@ final class SubTraversalPredicateAdapter implements RecognitionContext {
 
   @Nullable @Override
   public String boundaryClassName() {
-    return parent.boundaryClassName();
+    return HasBindingContext.capturedChildBoundary(parent.boundaryClassName());
   }
 
   @Nullable @Override
@@ -436,6 +434,14 @@ final class SubTraversalPredicateAdapter implements RecognitionContext {
   @Override
   public void markRidBearing() {
     parent.markRidBearing();
+  }
+
+  @Override
+  public void recordHasBinding(
+      HasBindingContext bindingContext, List<HasBindingContext.Slot> slots) {
+    // Slots are allocated on the parent even inside a captured child. A successfully translated
+    // child contributes those slots to the enclosing plan, including detached NOT expressions.
+    parent.recordHasBinding(bindingContext, slots);
   }
 
   /**

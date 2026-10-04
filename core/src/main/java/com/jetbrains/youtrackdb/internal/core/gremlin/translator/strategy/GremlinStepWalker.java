@@ -1387,7 +1387,8 @@ final class GremlinStepWalker {
         ctx.returnClass,
         Map.copyOf(inputParameters),
         !ctx.ridBearing(),
-        ctx.shaping());
+        ctx.shaping(),
+        ctx.hasBindings);
   }
 
   /**
